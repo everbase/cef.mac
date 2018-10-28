@@ -33,7 +33,7 @@ CefTextInputClientOSRMac* GetInputClientFromContext(
 }  // namespace
 
 @interface BrowserOpenGLView
-    : NSOpenGLView<NSDraggingSource, NSDraggingDestination, NSAccessibility> {
+    : NSOpenGLView<NSDraggingSource, NSDraggingDestination> {
  @private
   NSTrackingArea* tracking_area_;
   client::BrowserWindowOsrMac* browser_window_;
