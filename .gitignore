@@ -1,0 +1,8 @@
+build/
+
+# Chromium Embedded Framework (too large to include)
+Debug/
+Release/
+
+# MacOS
+.DS_Store
