@@ -20,113 +20,104 @@ EvbHandler* g_instance = NULL;
 
 }  // namespace
 
-EvbHandler::EvbHandler(bool use_views)
-    : use_views_(use_views), is_closing_(false) {
-  DCHECK(!g_instance);
-  g_instance = this;
+EvbHandler::EvbHandler( bool use_views )
+    : use_views_(use_views), is_closing_(false)
+{
+    DCHECK(!g_instance);
+    g_instance = this;
 }
 
 EvbHandler::~EvbHandler() {
-  g_instance = NULL;
+    g_instance = NULL;
 }
 
 // static
 EvbHandler* EvbHandler::GetInstance() {
-  return g_instance;
+    return g_instance;
 }
 
-void EvbHandler::OnTitleChange(CefRefPtr<CefBrowser> browser,
-                                  const CefString& title) {
-  CEF_REQUIRE_UI_THREAD();
+void EvbHandler::OnAfterCreated( CefRefPtr<CefBrowser> browser ) {
+    CEF_REQUIRE_UI_THREAD();
 
-  if (use_views_) {
-    // Set the title of the window using the Views framework.
-    CefRefPtr<CefBrowserView> browser_view =
-        CefBrowserView::GetForBrowser(browser);
-    if (browser_view) {
-      CefRefPtr<CefWindow> window = browser_view->GetWindow();
-      if (window)
-        window->SetTitle(title);
+    // Add to the list of existing browsers.
+    browser_list_.push_back(browser);
+}
+
+bool EvbHandler::DoClose( CefRefPtr<CefBrowser> browser ) {
+    CEF_REQUIRE_UI_THREAD();
+
+    // Closing the main window requires special handling. See the DoClose()
+    // documentation in the CEF header for a detailed destription of this
+    // process.
+    if( browser_list_.size() == 1 )
+    {
+        // Set a flag to indicate that the window close should be allowed.
+        is_closing_ = true;
     }
-  } else {
-    // Set the title of the window using platform APIs.
-    PlatformTitleChange(browser, title);
-  }
+  
+    // remove CefBrowserHostView subview in order for the CefLifeSpanHandler::OnBeforeClose being called
+    // causing CefQuitMessageLoop to be called when the last cef browser is destroyed, see OnBeforeClose
+    _releaseBrowserView( browser );
+
+    // Allow the close. For windowed browsers this will result in the OS close
+    // event being sent.
+    return false;
 }
 
-void EvbHandler::OnAfterCreated(CefRefPtr<CefBrowser> browser) {
-  CEF_REQUIRE_UI_THREAD();
+void EvbHandler::OnBeforeClose( CefRefPtr<CefBrowser> browser ) {
+    CEF_REQUIRE_UI_THREAD();
 
-  // Add to the list of existing browsers.
-  browser_list_.push_back(browser);
-}
-
-bool EvbHandler::DoClose(CefRefPtr<CefBrowser> browser) {
-  CEF_REQUIRE_UI_THREAD();
-
-  // Closing the main window requires special handling. See the DoClose()
-  // documentation in the CEF header for a detailed destription of this
-  // process.
-  if (browser_list_.size() == 1) {
-    // Set a flag to indicate that the window close should be allowed.
-    is_closing_ = true;
-  }
-
-  // Allow the close. For windowed browsers this will result in the OS close
-  // event being sent.
-  return false;
-}
-
-void EvbHandler::OnBeforeClose(CefRefPtr<CefBrowser> browser) {
-  CEF_REQUIRE_UI_THREAD();
-
-  // Remove from the list of existing browsers.
-  BrowserList::iterator bit = browser_list_.begin();
-  for (; bit != browser_list_.end(); ++bit) {
-    if ((*bit)->IsSame(browser)) {
-      browser_list_.erase(bit);
-      break;
+    // Remove from the list of existing browsers.
+    BrowserList::iterator bit = browser_list_.begin();
+    for( ; bit != browser_list_.end(); ++bit )
+    {
+        if( (*bit)->IsSame( browser ) )
+        {
+            browser_list_.erase(bit);
+            break;
+        }
     }
-  }
 
-  if (browser_list_.empty()) {
-    // All browser windows have closed. Quit the application message loop.
-    CefQuitMessageLoop();
-  }
+    if( browser_list_.empty() )
+    {
+        // All browser windows have closed. Quit the application message loop.
+        CefQuitMessageLoop();
+    }
 }
 
-void EvbHandler::OnLoadError(CefRefPtr<CefBrowser> browser,
-                                CefRefPtr<CefFrame> frame,
-                                ErrorCode errorCode,
-                                const CefString& errorText,
-                                const CefString& failedUrl) {
-  CEF_REQUIRE_UI_THREAD();
+void EvbHandler::OnLoadError( CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame,
+    ErrorCode errorCode, const CefString& errorText, const CefString& failedUrl )
+{
+    CEF_REQUIRE_UI_THREAD();
 
-  // Don't display an error for downloaded files.
-  if (errorCode == ERR_ABORTED)
-    return;
+    // Don't display an error for downloaded files.
+    if (errorCode == ERR_ABORTED)
+        return;
 
-  // Display a load error message.
-  std::stringstream ss;
-  ss << "<html><body bgcolor=\"white\">"
-        "<h2>Failed to load URL "
-     << std::string(failedUrl) << " with error " << std::string(errorText)
-     << " (" << errorCode << ").</h2></body></html>";
-  frame->LoadString(ss.str(), failedUrl);
+    // Display a load error message.
+    std::stringstream ss;
+    ss << "<html><body bgcolor=\"white\">"
+          "<h2>Failed to load URL "
+       << std::string(failedUrl) << " with error " << std::string(errorText)
+       << " (" << errorCode << ").</h2></body></html>";
+    frame->LoadString( ss.str(), failedUrl );
 }
 
-void EvbHandler::CloseAllBrowsers(bool force_close) {
-  if (!CefCurrentlyOn(TID_UI)) {
-    // Execute on the UI thread.
-    CefPostTask(TID_UI, base::Bind(&EvbHandler::CloseAllBrowsers, this,
-                                   force_close));
-    return;
-  }
+void EvbHandler::CloseAllBrowsers( bool force_close )
+{
+    if( !CefCurrentlyOn( TID_UI ) )
+    {
+        // Execute on the UI thread.
+        CefPostTask( TID_UI, base::Bind( &EvbHandler::CloseAllBrowsers, this, force_close ) );
+        return;
+    }
 
-  if (browser_list_.empty())
-    return;
+    if( browser_list_.empty() )
+        return;
 
-  BrowserList::const_iterator it = browser_list_.begin();
-  for (; it != browser_list_.end(); ++it)
-    (*it)->GetHost()->CloseBrowser(force_close);
+    BrowserList::const_iterator it = browser_list_.begin();
+    for( ; it != browser_list_.end(); ++it )
+    {
+        (*it)->GetHost()->CloseBrowser(force_close);
+    }
 }

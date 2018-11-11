@@ -9,32 +9,39 @@
 #include "include/wrapper/cef_helpers.h"
 #include "tests/cefevb/evb_app.h"
 #include "tests/cefevb/evb_handler.h"
-
-// Receives notifications from the application.
-@interface EvbAppDelegate : NSObject<NSApplicationDelegate>
-- (void)createApplication:(id)object;
-- (void)tryToTerminateApplication:(NSApplication*)app;
-@end
+#include "tests/cefevb/EVBAppDelegate.h"
 
 // Provide the CefAppProtocol implementation required by CEF.
-@interface EvbApplication : NSApplication<CefAppProtocol> {
- @private
-  BOOL handlingSendEvent_;
+@interface EVBApplication : NSApplication<CefAppProtocol> {
+
+@private
+    BOOL handlingSendEvent_;
 }
+
+- (void)createApplication:(id)object;
+
 @end
 
-@implementation EvbApplication
+
+@implementation EVBApplication
+
+// Create the application on the UI thread.
+- (void)createApplication:(id)object {
+    [NSApplication sharedApplication];
+    [[NSBundle mainBundle] loadNibNamed:@"MainMenu" owner:NSApp topLevelObjects:nil];
+}
+
 - (BOOL)isHandlingSendEvent {
-  return handlingSendEvent_;
+    return handlingSendEvent_;
 }
 
 - (void)setHandlingSendEvent:(BOOL)handlingSendEvent {
-  handlingSendEvent_ = handlingSendEvent;
+    handlingSendEvent_ = handlingSendEvent;
 }
 
 - (void)sendEvent:(NSEvent*)event {
-  CefScopedSendingEvent sendingEventScoper;
-  [super sendEvent:event];
+    CefScopedSendingEvent sendingEventScoper;
+    [super sendEvent:event];
 }
 
 // |-terminate:| is the entry point for orderly "quit" operations in Cocoa. This
@@ -75,37 +82,14 @@
 // The standard |-applicationShouldTerminate:| is not supported, and code paths
 // leading to it must be redirected.
 - (void)terminate:(id)sender {
-  EvbAppDelegate* delegate =
-      static_cast<EvbAppDelegate*>([NSApp delegate]);
+  EVBAppDelegate* delegate =
+      static_cast<EVBAppDelegate*>([NSApp delegate]);
   [delegate tryToTerminateApplication:self];
   // Return, don't exit. The application is responsible for exiting on its own.
 }
+
 @end
 
-@implementation EvbAppDelegate
-
-// Create the application on the UI thread.
-- (void)createApplication:(id)object {
-  [NSApplication sharedApplication];
-  [[NSBundle mainBundle] loadNibNamed:@"MainMenu"
-                                owner:NSApp
-                      topLevelObjects:nil];
-
-  // Set the delegate for application events.
-  [[NSApplication sharedApplication] setDelegate:self];
-}
-
-- (void)tryToTerminateApplication:(NSApplication*)app {
-  EvbHandler* handler = EvbHandler::GetInstance();
-  if (handler && !handler->IsClosing())
-    handler->CloseAllBrowsers(false);
-}
-
-- (NSApplicationTerminateReply)applicationShouldTerminate:
-    (NSApplication*)sender {
-  return NSTerminateNow;
-}
-@end
 
 // Entry point function for the browser process.
 int main(int argc, char* argv[]) {
@@ -113,40 +97,34 @@ int main(int argc, char* argv[]) {
   CefMainArgs main_args(argc, argv);
 
   // Initialize the AutoRelease pool.
-  NSAutoreleasePool* autopool = [[NSAutoreleasePool alloc] init];
+  @autoreleasepool
+  {
+      // Initialize and retrieve the EvbApplication instance.
+      EVBApplication* osxapp = static_cast<EVBApplication*>([EVBApplication sharedApplication]);
 
-  // Initialize the EvbApplication instance.
-  [EvbApplication sharedApplication];
+      // Create the application and wait until done,
+      // so the app delegate is getting initialized loding the MainMenu.xib.
+      //[osxapp performSelectorOnMainThread:@selector(createApplication:) withObject:nil waitUntilDone:YES];
+      [osxapp createApplication:nil];
 
-  // Specify CEF global settings here.
-  CefSettings settings;
+      // Specify CEF global settings here.
+      CefSettings settings;
 
-  // EvbApp implements application-level callbacks for the browser process.
-  // It will create the first browser instance in OnContextInitialized() after
-  // CEF has initialized.
-  CefRefPtr<EvbApp> app(new EvbApp);
+      // EvbApp implements application-level callbacks for the browser process.
+      // It will create the first browser instance in OnContextInitialized() after
+      // CEF has initialized.
+      CefRefPtr<EvbApp> app( new EvbApp() );
 
-  // Initialize CEF for the browser process.
-  CefInitialize(main_args, settings, app.get(), NULL);
+      // Initialize CEF for the browser process.
+      CefInitialize( main_args, settings, app.get(), NULL );
 
-  // Create the application delegate.
-  NSObject* delegate = [[EvbAppDelegate alloc] init];
-  [delegate performSelectorOnMainThread:@selector(createApplication:)
-                             withObject:nil
-                          waitUntilDone:NO];
+      // Run the CEF message loop. This will block until CefQuitMessageLoop() is
+      // called.
+      CefRunMessageLoop();
 
-  // Run the CEF message loop. This will block until CefQuitMessageLoop() is
-  // called.
-  CefRunMessageLoop();
-
-  // Shut down CEF.
-  CefShutdown();
-
-  // Release the delegate.
-  [delegate release];
-
-  // Release the AutoRelease pool.
-  [autopool release];
+      // Shut down CEF.
+      CefShutdown();
+  }
 
   return 0;
 }

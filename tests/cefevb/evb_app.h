@@ -8,22 +8,23 @@
 #include "include/cef_app.h"
 
 // Implement application-level callbacks for the browser process.
-class EvbApp : public CefApp, public CefBrowserProcessHandler {
- public:
-  EvbApp();
+class EvbApp : public CefApp, public CefBrowserProcessHandler
+{
+public:
+    EvbApp();
 
-  // CefApp methods:
-  virtual CefRefPtr<CefBrowserProcessHandler> GetBrowserProcessHandler()
-      OVERRIDE {
-    return this;
-  }
+    // CefApp methods:
+    virtual CefRefPtr<CefBrowserProcessHandler> GetBrowserProcessHandler() OVERRIDE { return this; }
 
-  // CefBrowserProcessHandler methods:
-  virtual void OnContextInitialized() OVERRIDE;
+    // CefBrowserProcessHandler methods:
+    virtual void OnContextInitialized() OVERRIDE;
 
- private:
-  // Include the default reference counting implementation.
-  IMPLEMENT_REFCOUNTING(EvbApp);
+private:
+    // Platform-specific implementation.
+    void _createBrowser();
+
+    // Include the default reference counting implementation.
+    IMPLEMENT_REFCOUNTING( EvbApp );
 };
 
 #endif  // CEF_TESTS_CEFEVB_EVB_APP_H_
