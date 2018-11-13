@@ -20,30 +20,34 @@ EvbHandler* g_instance = NULL;
 
 }  // namespace
 
-EvbHandler::EvbHandler( bool use_views )
-    : use_views_(use_views), is_closing_(false)
+EvbHandler::EvbHandler()
+    : is_closing_(false)
 {
     DCHECK(!g_instance);
     g_instance = this;
 }
 
-EvbHandler::~EvbHandler() {
+EvbHandler::~EvbHandler()
+{
     g_instance = NULL;
 }
 
 // static
-EvbHandler* EvbHandler::GetInstance() {
+EvbHandler* EvbHandler::GetInstance()
+{
     return g_instance;
 }
 
-void EvbHandler::OnAfterCreated( CefRefPtr<CefBrowser> browser ) {
+void EvbHandler::OnAfterCreated( CefRefPtr<CefBrowser> browser )
+{
     CEF_REQUIRE_UI_THREAD();
 
     // Add to the list of existing browsers.
     browser_list_.push_back(browser);
 }
 
-bool EvbHandler::DoClose( CefRefPtr<CefBrowser> browser ) {
+bool EvbHandler::DoClose( CefRefPtr<CefBrowser> browser )
+{
     CEF_REQUIRE_UI_THREAD();
 
     // Closing the main window requires special handling. See the DoClose()
@@ -64,7 +68,8 @@ bool EvbHandler::DoClose( CefRefPtr<CefBrowser> browser ) {
     return false;
 }
 
-void EvbHandler::OnBeforeClose( CefRefPtr<CefBrowser> browser ) {
+void EvbHandler::OnBeforeClose( CefRefPtr<CefBrowser> browser )
+{
     CEF_REQUIRE_UI_THREAD();
 
     // Remove from the list of existing browsers.

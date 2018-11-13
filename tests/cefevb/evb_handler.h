@@ -12,7 +12,7 @@
 class EvbHandler : public CefClient, public CefDisplayHandler, public CefLifeSpanHandler, public CefLoadHandler
 {
 public:
-    explicit EvbHandler(bool use_views);
+    explicit EvbHandler();
     ~EvbHandler();
 
     // Provide access to the single global instance of this object.
@@ -40,9 +40,6 @@ public:
 private:
     // Platform-specific implementation.
     void _releaseBrowserView( CefRefPtr<CefBrowser> browser );
-
-    // True if the application is using the Views framework.
-    const bool use_views_;
 
     // List of existing browser windows. Only accessed on the CEF UI thread.
     typedef std::list<CefRefPtr<CefBrowser>> BrowserList;

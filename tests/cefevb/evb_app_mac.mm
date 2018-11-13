@@ -24,7 +24,7 @@ void EvbApp::_createBrowser()
     NSRect contentBounds = [webView bounds];
 
     // EvbHandler implements browser-level callbacks.
-    CefRefPtr<EvbHandler> handler( new EvbHandler( false ) );
+    CefRefPtr<EvbHandler> handler( new EvbHandler() );
 
     // Specify CEF browser settings here.
     CefBrowserSettings browser_settings;

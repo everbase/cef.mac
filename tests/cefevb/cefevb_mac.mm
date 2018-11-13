@@ -27,7 +27,6 @@
 
 // Create the application on the UI thread.
 - (void)createApplication:(id)object {
-    [NSApplication sharedApplication];
     [[NSBundle mainBundle] loadNibNamed:@"MainMenu" owner:NSApp topLevelObjects:nil];
 }
 
@@ -82,10 +81,10 @@
 // The standard |-applicationShouldTerminate:| is not supported, and code paths
 // leading to it must be redirected.
 - (void)terminate:(id)sender {
-  EVBAppDelegate* delegate =
-      static_cast<EVBAppDelegate*>([NSApp delegate]);
-  [delegate tryToTerminateApplication:self];
-  // Return, don't exit. The application is responsible for exiting on its own.
+    EVBAppDelegate* delegate =
+        static_cast<EVBAppDelegate*>([NSApp delegate]);
+    [delegate tryToTerminateApplication:self];
+    // Return, don't exit. The application is responsible for exiting on its own.
 }
 
 @end
@@ -93,38 +92,38 @@
 
 // Entry point function for the browser process.
 int main(int argc, char* argv[]) {
-  // Provide CEF with command-line arguments.
-  CefMainArgs main_args(argc, argv);
+    // Provide CEF with command-line arguments.
+    CefMainArgs main_args(argc, argv);
 
-  // Initialize the AutoRelease pool.
-  @autoreleasepool
-  {
-      // Initialize and retrieve the EvbApplication instance.
-      EVBApplication* osxapp = static_cast<EVBApplication*>([EVBApplication sharedApplication]);
+    // Initialize the AutoRelease pool.
+    @autoreleasepool
+    {
+        // Initialize and retrieve the EvbApplication instance.
+        EVBApplication* osxapp = static_cast<EVBApplication*>([EVBApplication sharedApplication]);
 
-      // Create the application and wait until done,
-      // so the app delegate is getting initialized loding the MainMenu.xib.
-      //[osxapp performSelectorOnMainThread:@selector(createApplication:) withObject:nil waitUntilDone:YES];
-      [osxapp createApplication:nil];
+        // Create the application loading the MainMenu.xib and wait until done,
+        // so that the app delegate is getting initialized.
+        //[osxapp performSelectorOnMainThread:@selector(createApplication:) withObject:nil waitUntilDone:YES];
+        [osxapp createApplication:nil];
 
-      // Specify CEF global settings here.
-      CefSettings settings;
+        // Specify CEF global settings here.
+        CefSettings settings;
 
-      // EvbApp implements application-level callbacks for the browser process.
-      // It will create the first browser instance in OnContextInitialized() after
-      // CEF has initialized.
-      CefRefPtr<EvbApp> app( new EvbApp() );
+        // EvbApp implements application-level callbacks for the browser process.
+        // It will create the first browser instance in OnContextInitialized() after
+        // CEF has initialized.
+        CefRefPtr<EvbApp> app( new EvbApp() );
 
-      // Initialize CEF for the browser process.
-      CefInitialize( main_args, settings, app.get(), NULL );
+        // Initialize CEF for the browser process.
+        CefInitialize( main_args, settings, app.get(), NULL );
 
-      // Run the CEF message loop. This will block until CefQuitMessageLoop() is
-      // called.
-      CefRunMessageLoop();
+        // Run the CEF message loop. This will block until CefQuitMessageLoop() is
+        // called.
+        CefRunMessageLoop();
 
-      // Shut down CEF.
-      CefShutdown();
-  }
+        // Shut down CEF.
+        CefShutdown();
+    }
 
-  return 0;
+    return 0;
 }

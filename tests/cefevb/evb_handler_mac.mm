@@ -8,7 +8,7 @@
 
 #include "include/cef_browser.h"
 
-void EvbHandler::_releaseBrowserView(CefRefPtr<CefBrowser> browser)
+void EvbHandler::_releaseBrowserView( CefRefPtr<CefBrowser> browser )
 {
     [browser->GetHost()->GetWindowHandle() removeFromSuperview];
 }
